@@ -9,16 +9,6 @@ using System.Threading.Tasks;
 
 namespace Game1
 {
-
-    //todo: fix input so that player can't press more than 2 buttons
-    //dont record or display more than 2 button presses either, discard additional
-    //we could also split the controller into 2 bytes, on for the direction,
-    //and one for the buttons, which would allow us to support more, while
-    //keeping recording size very small
-
-
-
-
     public enum Direction : byte
     {   //represents possible controller directions  
         None,
@@ -481,6 +471,19 @@ namespace Game1
 
         public static bool IsNewButtonHeld_Start()
         { return (thisFrame.Start && prevFrame.Start); }
+
+
+
+
+
+
+
+        //todo: fix input so that player can't press more than 2 buttons
+        //dont record or display more than 2 button presses either, discard additional
+        //we could also split the controller into 2 bytes, one for the direction,
+        //and one for the buttons, which would allow us to support more, while
+        //keeping recording size very small
+
 
 
 
