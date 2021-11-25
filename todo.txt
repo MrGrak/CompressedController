@@ -1,0 +1,34 @@
+
+
+
+
+
+
+add support for 3+ buttons pressed down at once.
+
+
+
+
+
+9 directions
+
+button set:
+
+none
+a b x y start 
+ab ax ay
+bx by
+xy
+
+
+abx aby byx xya
+abxy
+
+
+17 unique buttons
+
+153 states
+
+
+
+

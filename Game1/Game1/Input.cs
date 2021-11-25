@@ -323,15 +323,18 @@ namespace Game1
         
         
 
+
+
         //methods to convert input struct to byte value
 
-        static byte DirectionOffset = 16;
+        static byte DirectionOffset = 17;
 
         public static byte ConvertToByte(GameInputStruct Input)
         {
             byte value = 0;
             switch (Input.Direction)
             {   //based on direction + button combination, calculate a byte value
+                //based on 9 directions, plus 17 button combinations = 153 total states
                 case Direction.None: { value = (byte)(0 + GetButtonDownValue(Input)); break; }
                 case Direction.Up: { value = (byte)(DirectionOffset * 1 + GetButtonDownValue(Input)); break; }
                 case Direction.UpRight: { value = (byte)(DirectionOffset * 2 + GetButtonDownValue(Input)); break; }
@@ -341,33 +344,37 @@ namespace Game1
                 case Direction.DownLeft: { value = (byte)(DirectionOffset * 6 + GetButtonDownValue(Input)); break; }
                 case Direction.Left: { value = (byte)(DirectionOffset * 7 + GetButtonDownValue(Input)); break; }
                 case Direction.UpLeft: { value = (byte)(DirectionOffset * 8 + GetButtonDownValue(Input)); break; }
-                default: { break; } //max = 16 * 8 = 128
+                default: { break; } 
             }
             return value;
         }
-
+        
         public static byte GetButtonDownValue(GameInputStruct Input)
-        {   //check for single button presses
+        {   
+            //check for single button presses
             if (!Input.A && !Input.B && !Input.X && !Input.Y && !Input.Start) { return 0; }
             else if (Input.A && !Input.B && !Input.X && !Input.Y && !Input.Start) { return 1; }
             else if (!Input.A && Input.B && !Input.X && !Input.Y && !Input.Start) { return 2; }
             else if (!Input.A && !Input.B && Input.X && !Input.Y && !Input.Start) { return 3; }
             else if (!Input.A && !Input.B && !Input.X && Input.Y && !Input.Start) { return 4; }
-            else if (!Input.A && !Input.B && !Input.X && !Input.Y && Input.Start) { return 5; }
+            else if (Input.Start) { return 5; } //special case for start
             //check for two button presses starting with A
-            else if (Input.A && Input.B && !Input.X && !Input.Y && !Input.Start) { return 6; }
-            else if (Input.A && !Input.B && Input.X && !Input.Y && !Input.Start) { return 7; }
-            else if (Input.A && !Input.B && !Input.X && Input.Y && !Input.Start) { return 8; }
-            else if (Input.A && !Input.B && !Input.X && !Input.Y && Input.Start) { return 9; }
+            else if (Input.A && Input.B && !Input.X && !Input.Y) { return 6; }
+            else if (Input.A && !Input.B && Input.X && !Input.Y) { return 7; }
+            else if (Input.A && !Input.B && !Input.X && Input.Y) { return 8; }
             //check for two button presses starting with B
-            else if (!Input.A && Input.B && Input.X && !Input.Y && !Input.Start) { return 10; }
-            else if (!Input.A && Input.B && !Input.X && Input.Y && !Input.Start) { return 11; }
-            else if (!Input.A && Input.B && !Input.X && !Input.Y && Input.Start) { return 12; }
+            else if (!Input.A && Input.B && Input.X && !Input.Y) { return 9; }
+            else if (!Input.A && Input.B && !Input.X && Input.Y) { return 10; }
             //check for two button presses starting with X
-            else if (!Input.A && !Input.B && Input.X && Input.Y && !Input.Start) { return 13; }
-            else if (!Input.A && !Input.B && Input.X && !Input.Y && Input.Start) { return 14; }
-            //check for two button presses starting with Y
-            else if (!Input.A && !Input.B && !Input.X && Input.Y && Input.Start) { return 15; }
+            else if (!Input.A && !Input.B && Input.X && Input.Y) { return 11; }
+            //check for three button presses
+            else if (Input.A && Input.B && Input.X && !Input.Y) { return 12; }
+            else if (Input.A && Input.B && !Input.X && Input.Y) { return 13; }
+            else if (!Input.A && Input.B && Input.X && Input.Y) { return 14; }
+            else if (Input.A && !Input.B && Input.X && Input.Y) { return 15; }
+            //check for 4 buttons down
+            else if (Input.A && Input.B && Input.X && Input.Y) { return 16; }
+            //total of 17 unique button combinations
             return 0;
         }
 
@@ -411,18 +418,23 @@ namespace Game1
                 case 6: { GIS.A = true; GIS.B = true; break; }
                 case 7: { GIS.A = true; GIS.X = true; break; }
                 case 8: { GIS.A = true; GIS.Y = true; break; }
-                case 9: { GIS.A = true; GIS.Start = true; break; }
                 //check for two button presses starting with B
-                case 10: { GIS.B = true; GIS.X = true; break; }
-                case 11: { GIS.B = true; GIS.Y = true; break; }
-                case 12: { GIS.B = true; GIS.Start = true; break; }
+                case 9: { GIS.B = true; GIS.X = true; break; }
+                case 10: { GIS.B = true; GIS.Y = true; break; }
                 //check for two button presses starting with X
-                case 13: { GIS.X = true; GIS.Y = true; break; }
-                case 14: { GIS.X = true; GIS.Start = true; break; }
-                //check for two button presses starting with Y
-                case 15: { GIS.Y = true; GIS.Start = true; break; }
+                case 11: { GIS.X = true; GIS.Y = true; break; }
+                //check for three button presses
+                case 12: { GIS.A = true; GIS.B = true; GIS.X = true; break; }
+                case 13: { GIS.A = true; GIS.B = true; GIS.Y = true; break; }
+                case 14: { GIS.B = true; GIS.Y = true; GIS.X = true; break; }
+                case 15: { GIS.X = true; GIS.Y = true; GIS.A = true; break; }
+                //check for four button presses
+                case 16: { GIS.A = true; GIS.B = true; GIS.X = true; GIS.Y = true; break; }
             }
         }
+
+
+
 
 
 
@@ -476,14 +488,7 @@ namespace Game1
 
 
 
-
-
-        //todo: fix input so that player can't press more than 2 buttons
-        //dont record or display more than 2 button presses either, discard additional
-        //we could also split the controller into 2 bytes, one for the direction,
-        //and one for the buttons, which would allow us to support more, while
-        //keeping recording size very small
-
+        
 
 
 
