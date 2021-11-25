@@ -1,0 +1,18 @@
+
+
+
+
+
+
+## keep repo size small, only track code/game related changes
+
+# User-specific files
+*.suo
+*.tmp
+*.TMP
+
+Game1/Game1/bin
+Game1/Game1/obj
+Game1/Game1/Content
+
+
