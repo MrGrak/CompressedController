@@ -72,8 +72,8 @@ namespace Game1
             CompressedState = 0; //reset controller state
 
             //place rectangles in controller positions
-            Point Pos = new Point(50, 50); //controls overall ui position
-            byte scale = 8;
+            Point Pos = new Point(75, 50); //controls overall ui position
+            byte scale = 25;
             int Off = scale * 7; //padding between dir buttons and abxy buttons
             Rectangles = new List<Rectangle>();
             for (int i = 0; i < Size; i++)
@@ -88,7 +88,7 @@ namespace Game1
                     case 5: { Rectangles.Add(new Rectangle(Pos.X + Off + scale, Pos.Y + scale, scale, scale)); break; } //B
                     case 6: { Rectangles.Add(new Rectangle(Pos.X + Off + 0, Pos.Y + scale * 2, scale, scale)); break; } //X
                     case 7: { Rectangles.Add(new Rectangle(Pos.X + Off - scale, Pos.Y + scale, scale, scale)); break; } //Y
-                    case 8: { Rectangles.Add(new Rectangle(Pos.X + 24, Pos.Y + scale, scale * 2, scale)); break; } //start button
+                    case 8: { Rectangles.Add(new Rectangle(Pos.X + scale * 3, Pos.Y + scale, scale * 2, scale)); break; } //start button
 
                     default: { break; }
                 }
