@@ -1,17 +1,36 @@
 
 
+4 byte controller:
+
+9 directions + 28 velocities in joystick position
+so we can represent changes in float in 0.0357142 increments.
+that's what we're essentially quantizing the vector2 position to.
+this is for left and right joysticks. we can quantize both to a byte.
+so, that's two bytes for two joysticks. normally that would be 8 bytes
+for each vector2, 16 bytes total. 8 to 1 compression ratio here.
+
+dpad is reduced to a byte direction, we dont get any savings here.
+
+button sets:
+none a b x y ls rs lt rt
+r joystick press, l joystick press
+11 diff buttons = 121 diff combinations
+start (on it's own)
+122 diff button states, assuming start ignores other buttons
+so, one byte for buttons.
+
+4 bytes total, which stores all the controller state pretty well.
+
+we should be able to compress a gamepad state directly to this 4 byte struct
+we should be able to decompress a 4 byte struct to a gamepad state directly, too
+
+we should be able to see the joystick position, relative to it's origin, in
+at least a 28px sized area, since we have that data.
 
 
-
-
-add support for 3+ buttons pressed down at once.
-
-
-
-
+one byte controller:
 
 9 directions
-
 button set:
 
 none
@@ -19,16 +38,13 @@ a b x y start
 ab ax ay
 bx by
 xy
-
-
 abx aby byx xya
 abxy
 
-
 17 unique buttons
+9 * 17 = 153 states
 
-153 states
-
-
-
-
+with these compression ratios, we get file sizes of:
+4 byte struct = 4bytes * 60fps * 60seconds * 10mins = 144,000 bytes
+1 byte struct = 1byte * 60fps * 60seconds * 10mins = 36,000 bytes
+which can still be compressed even more, using rle.
