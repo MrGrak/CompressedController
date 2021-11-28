@@ -1,4 +1,19 @@
 
+
+
+challenge 1:
+
+load a gamepad struct file, parse it to an array.
+compress the array data.
+write array data to a file.
+compare original file to compressed version.
+
+
+
+
+
+
+
 4 byte controller:
 
 9 directions + 28 velocities in joystick position

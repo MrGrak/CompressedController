@@ -3,13 +3,16 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Game1
 {
-    public static class Input
+    public static class RecordWriteInput
     {
         public static Game G;
         public static GraphicsDeviceManager GDM;
@@ -22,7 +25,6 @@ namespace Game1
 
         //structs to store this frame and prev frames input
         public static GameInputStruct thisFrame;
-        public static GameInputStruct prevFrame;
 
         public static GamePadState ControllerState;
         //the amount of joystick movement classified as noise
@@ -31,16 +33,22 @@ namespace Game1
         //stores gamepad state in a byte
         public static byte CompressedState;
         //allocate a buffer of game input structs to write to - 60 fps x N seconds
-        public static short InputRecBufferSize = 60 * 10;
-        public static byte[] InputRecordingBuffer = new byte[InputRecBufferSize];
+        public static short InputRecBufferSize = 1000; //1k for challenge
         public static short InputRecordingCounter = 0;
+
+        //setup the recording input buffers
+        public static byte[] Rec_ByteBuffer = new byte[InputRecBufferSize];
+        public static GameInputStruct[] Rec_GISBuffer = new GameInputStruct[InputRecBufferSize];
+        public static GamePadState[] Rec_GPSBuffer = new GamePadState[InputRecBufferSize];
 
         //controls if class is recording or playing back input
         public static bool Recording = true;
 
+        //size values
+        public static int size_GPS; //56 bytes
+        public static int size_GIS; //24 bytes
 
 
-        
 
         public static void Constructor(GraphicsDeviceManager gdm, SpriteBatch sb, Game g)
         {
@@ -73,27 +81,34 @@ namespace Game1
                     default: { break; }
                 }
             }
+
+            //get size of the gamepad state and game input struct for comparison
+            size_GPS = System.Runtime.InteropServices.Marshal.SizeOf(typeof(GamePadState));
+            size_GIS = System.Runtime.InteropServices.Marshal.SizeOf(typeof(GameInputStruct));
         }
 
         public static void Update()
         {
-            if(Recording)
+            if (Recording)
             {
                 //map controller to input struct, store in input buffer
 
-                //store this frames input in prev frame
-                prevFrame = thisFrame;
                 //clear this frame's input
                 thisFrame = new GameInputStruct();
                 //assume player one, this is brittle
                 ControllerState = GamePad.GetState(PlayerIndex.One);
+                //record gamepad state state to recording buffer
+                Rec_GPSBuffer[InputRecordingCounter] = ControllerState;
+
                 //map controller state to struct - useful when mapping diff inputs (like keys)
                 MapController(ref ControllerState, ref thisFrame);
-                //convert input struct to byte, store in buffer
-                InputRecordingBuffer[InputRecordingCounter] = ConvertToByte(thisFrame);
+                //record 24 byte controller state to recording buffer
+                Rec_GISBuffer[InputRecordingCounter] = thisFrame;
 
+                //convert input struct to byte, record in buffer
+                Rec_ByteBuffer[InputRecordingCounter] = ConvertToByte(thisFrame);
                 //update compressed state that we draw later
-                CompressedState = InputRecordingBuffer[InputRecordingCounter];
+                CompressedState = Rec_ByteBuffer[InputRecordingCounter];
 
                 //using a counter, track where input is stored in buffer
                 InputRecordingCounter++;
@@ -106,31 +121,117 @@ namespace Game1
             }
             else
             {
-                //play back input from input buffer
+                //write recorded input to local binary files for size comparison
 
-                //store this frames input in prev frame
-                prevFrame = thisFrame;
-                //update this frame's input
-                thisFrame = ConvertToInputStruct(InputRecordingBuffer[InputRecordingCounter]);
 
-                //update compressed state that we draw later
-                CompressedState = InputRecordingBuffer[InputRecordingCounter];
+                #region Write input byte array
 
-                //using a counter, track where input is stored in buffer
-                InputRecordingCounter++;
-                //treat this data stream as a ring, loop back to start
-                if (InputRecordingCounter >= InputRecBufferSize)
                 {
-                    InputRecordingCounter = 0;
-                    Recording = true; //begin recording into buffer
+                    string dir = Path.Combine(GetExecutingDirectoryName(), "GamePadByte.bin");
+                    using (MemoryStream stream = new MemoryStream())
+                    {
+                        using (BinaryWriter writer = new BinaryWriter(stream))
+                        {   //write all bytes from buffer into stream
+                            for (int i = 0; i < InputRecBufferSize; i++)
+                            { writer.Write((byte)Rec_ByteBuffer[i]); }
+                            //convert to byte array
+                            var data = stream.ToArray();
+                            //write byte array to game dir
+                            using (var s = File.Open(dir, FileMode.Create, FileAccess.Write))
+                            { s.Write(data, 0, data.Length); }
+                        }
+                    }
                 }
+
+                #endregion
+
+                #region Write input game pad struct array
+
+                {
+                    string dir = Path.Combine(GetExecutingDirectoryName(), "GamePadStruct.bin");
+                    using (MemoryStream stream = new MemoryStream())
+                    {
+                        using (BinaryWriter writer = new BinaryWriter(stream))
+                        {   //write all structs from buffer into stream
+                            for (int i = 0; i < InputRecBufferSize; i++)
+                            {
+                                writer.Write((byte)Rec_GISBuffer[i].Direction);
+                                writer.Write((bool)Rec_GISBuffer[i].Start);
+                                writer.Write((bool)Rec_GISBuffer[i].A);
+                                writer.Write((bool)Rec_GISBuffer[i].B);
+                                writer.Write((bool)Rec_GISBuffer[i].X);
+                                writer.Write((bool)Rec_GISBuffer[i].Y);
+                            }
+                            //convert to byte array
+                            var data = stream.ToArray();
+                            //write byte array to game dir
+                            using (var s = File.Open(dir, FileMode.Create, FileAccess.Write))
+                            { s.Write(data, 0, data.Length); }
+                        }
+                    }
+                }
+
+                #endregion
+
+                #region Write gamepad state struct array
+
+                {
+                    string dir = Path.Combine(GetExecutingDirectoryName(), "GamePadState.bin");
+                    using (MemoryStream stream = new MemoryStream())
+                    {
+                        using (BinaryWriter writer = new BinaryWriter(stream))
+                        {
+                            //write all structs from buffer into stream
+                            for (int i = 0; i < InputRecBufferSize; i++)
+                            {
+                                //ButtonState is defined as an int enum
+                                writer.Write((int)Rec_GPSBuffer[i].Buttons.A);
+                                writer.Write((int)Rec_GPSBuffer[i].Buttons.B);
+                                writer.Write((int)Rec_GPSBuffer[i].Buttons.X);
+                                writer.Write((int)Rec_GPSBuffer[i].Buttons.Y);
+                                writer.Write((int)Rec_GPSBuffer[i].Buttons.Back);
+                                writer.Write((int)Rec_GPSBuffer[i].Buttons.BigButton);
+                                writer.Write((int)Rec_GPSBuffer[i].Buttons.LeftShoulder);
+                                writer.Write((int)Rec_GPSBuffer[i].Buttons.LeftStick);
+                                writer.Write((int)Rec_GPSBuffer[i].Buttons.RightShoulder);
+                                writer.Write((int)Rec_GPSBuffer[i].Buttons.RightStick);
+                                writer.Write((int)Rec_GPSBuffer[i].Buttons.Start);
+                                writer.Write((int)Rec_GPSBuffer[i].DPad.Down);
+                                writer.Write((int)Rec_GPSBuffer[i].DPad.Left);
+                                writer.Write((int)Rec_GPSBuffer[i].DPad.Right);
+                                writer.Write((int)Rec_GPSBuffer[i].DPad.Up);
+                                writer.Write((bool)Rec_GPSBuffer[i].IsConnected);
+                                writer.Write((int)Rec_GPSBuffer[i].PacketNumber);
+                                //these are all float values
+                                writer.Write((float)Rec_GPSBuffer[i].ThumbSticks.Left.X);
+                                writer.Write((float)Rec_GPSBuffer[i].ThumbSticks.Left.Y);
+                                writer.Write((float)Rec_GPSBuffer[i].ThumbSticks.Right.X);
+                                writer.Write((float)Rec_GPSBuffer[i].ThumbSticks.Right.Y);
+                                writer.Write((float)Rec_GPSBuffer[i].Triggers.Left);
+                                writer.Write((float)Rec_GPSBuffer[i].Triggers.Right);
+                            }
+                            //convert to byte array
+                            var data = stream.ToArray();
+                            //write byte array to game dir
+                            using (var s = File.Open(dir, FileMode.Create, FileAccess.Write))
+                            { s.Write(data, 0, data.Length); }
+                        }
+                    }
+                }
+
+                #endregion
+
+
+
+                //done, exit game
+                G.Exit();
             }
         }
 
         public static void Draw()
         {
             SB.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
-            
+
             //draw all buttons with black background
             for (int i = 0; i < Size; i++)
             {
@@ -166,6 +267,18 @@ namespace Game1
             if (thisFrame.Start) { DrawRectangle(Rectangles[8], Color.White); }
 
             SB.End();
+
+            //update window title with debug info
+            G.Window.Title = "controller state : " + CompressedState +
+                " / buff index : " + InputRecordingCounter +
+                " / buff size : " + InputRecBufferSize;
+            if (Recording)
+            { G.Window.Title += " - recording"; }
+            else
+            { G.Window.Title += " - writing"; }
+
+            G.Window.Title += " GPS:" + size_GPS;
+            G.Window.Title += " GIS:" + size_GIS;
         }
 
         public static void DrawRectangle(Rectangle Rec, Color color)
@@ -177,8 +290,6 @@ namespace Game1
                 SpriteEffects.None, 0.00001f);
         }
 
-
-        
 
         //methods to map gamepad state to game input struct (add more, like for keyboard, etc)
 
@@ -235,7 +346,7 @@ namespace Game1
             { GIS.Direction = Direction.UpRight; }
             else if (GPS.IsButtonDown(Buttons.DPadLeft) &
                 GPS.IsButtonDown(Buttons.DPadUp))
-            { GIS.Direction = Direction.UpLeft;}
+            { GIS.Direction = Direction.UpLeft; }
             else if (GPS.IsButtonDown(Buttons.DPadLeft) &
                 GPS.IsButtonDown(Buttons.DPadDown))
             { GIS.Direction = Direction.DownLeft; }
@@ -286,7 +397,7 @@ namespace Game1
             #endregion
 
             #region Map Additional Button Inputs
-            
+
             if (GPS.IsButtonDown(Buttons.LeftTrigger))
             {
                 GIS.X = true;
@@ -300,9 +411,11 @@ namespace Game1
 
         }
 
-        
-        
-
+        public static string GetExecutingDirectoryName()
+        {
+            var location = new Uri(Assembly.GetEntryAssembly().GetName().CodeBase);
+            return new FileInfo(location.AbsolutePath).Directory.FullName;
+        }
 
 
         //methods to convert input struct to byte value
@@ -324,13 +437,13 @@ namespace Game1
                 case Direction.DownLeft: { value = (byte)(DirectionOffset * 6 + GetButtonDownValue(Input)); break; }
                 case Direction.Left: { value = (byte)(DirectionOffset * 7 + GetButtonDownValue(Input)); break; }
                 case Direction.UpLeft: { value = (byte)(DirectionOffset * 8 + GetButtonDownValue(Input)); break; }
-                default: { break; } 
+                default: { break; }
             }
             return value;
         }
-        
+
         public static byte GetButtonDownValue(GameInputStruct Input)
-        {   
+        {
             //check for single button presses
             if (!Input.A && !Input.B && !Input.X && !Input.Y && !Input.Start) { return 0; }
             else if (Input.A && !Input.B && !Input.X && !Input.Y && !Input.Start) { return 1; }
@@ -357,119 +470,6 @@ namespace Game1
             //total of 17 unique button combinations
             return 0;
         }
-
-        //methods to convert byte value to input struct
-
-        public static GameInputStruct ConvertToInputStruct(byte Input)
-        {
-            GameInputStruct GIS = new GameInputStruct();
-            //reduce input value to button value, set buttons
-            byte dirCount = 0, btnID = Input;
-            while (btnID >= DirectionOffset) { btnID -= DirectionOffset; dirCount++; }
-            SetButtons(ref GIS, btnID);
-            //determine direction to apply based on number of reductions
-            switch (dirCount)
-            {
-                case 0: { break; }
-                case 1: { GIS.Direction = Direction.Up; break; }
-                case 2: { GIS.Direction = Direction.UpRight; break; }
-                case 3: { GIS.Direction = Direction.Right; break; }
-                case 4: { GIS.Direction = Direction.DownRight; break; }
-                case 5: { GIS.Direction = Direction.Down; break; }
-                case 6: { GIS.Direction = Direction.DownLeft; break; }
-                case 7: { GIS.Direction = Direction.Left; break; }
-                case 8: { GIS.Direction = Direction.UpLeft; break; }
-                default: { break; }
-            }
-            return GIS;
-        }
-
-        public static void SetButtons(ref GameInputStruct GIS, byte btnID)
-        {   //check for single button presses
-            switch (btnID)
-            {   //check for single button presses
-                case 0: { break; }
-                case 1: { GIS.A = true; break; }
-                case 2: { GIS.B = true; break; }
-                case 3: { GIS.X = true; break; }
-                case 4: { GIS.Y = true; break; }
-                case 5: { GIS.Start = true; break; }
-                //check for two button presses starting with A
-                case 6: { GIS.A = true; GIS.B = true; break; }
-                case 7: { GIS.A = true; GIS.X = true; break; }
-                case 8: { GIS.A = true; GIS.Y = true; break; }
-                //check for two button presses starting with B
-                case 9: { GIS.B = true; GIS.X = true; break; }
-                case 10: { GIS.B = true; GIS.Y = true; break; }
-                //check for two button presses starting with X
-                case 11: { GIS.X = true; GIS.Y = true; break; }
-                //check for three button presses
-                case 12: { GIS.A = true; GIS.B = true; GIS.X = true; break; }
-                case 13: { GIS.A = true; GIS.B = true; GIS.Y = true; break; }
-                case 14: { GIS.B = true; GIS.Y = true; GIS.X = true; break; }
-                case 15: { GIS.X = true; GIS.Y = true; GIS.A = true; break; }
-                //check for four button presses
-                case 16: { GIS.A = true; GIS.B = true; GIS.X = true; GIS.Y = true; break; }
-            }
-        }
-
-
-
-
-
-
-
-        //button PRESS methods
-
-        public static bool IsNewButtonPress_A()
-        { return (thisFrame.A && !prevFrame.A); }
-
-        public static bool IsNewButtonPress_B()
-        { return (thisFrame.B && !prevFrame.B); }
-
-        public static bool IsNewButtonPress_X()
-        { return (thisFrame.X && !prevFrame.X); }
-
-        public static bool IsNewButtonPress_Y()
-        { return (thisFrame.Y && !prevFrame.Y); }
-
-        public static bool IsNewButtonPress_Start()
-        { return (thisFrame.Start && !prevFrame.Start); }
-
-        public static bool IsNewButtonPress_ANY()
-        {
-            if (IsNewButtonPress_A() ||
-                IsNewButtonPress_B() ||
-                IsNewButtonPress_X() ||
-                IsNewButtonPress_Y() ||
-                IsNewButtonPress_Start())
-            { return true; }
-            else { return false; }
-        }
-
-        //button HELD methods
-
-        public static bool IsNewButtonHeld_A()
-        { return (thisFrame.A && prevFrame.A); }
-
-        public static bool IsNewButtonHeld_B()
-        { return (thisFrame.B && prevFrame.B); }
-
-        public static bool IsNewButtonHeld_X()
-        { return (thisFrame.X && prevFrame.X); }
-
-        public static bool IsNewButtonHeld_Y()
-        { return (thisFrame.Y && prevFrame.Y); }
-
-        public static bool IsNewButtonHeld_Start()
-        { return (thisFrame.Start && prevFrame.Start); }
-
-
-
-
-
-        
-
 
 
     }

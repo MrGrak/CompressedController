@@ -8,15 +8,31 @@ namespace Game1
     //will map and display gamepad controller to ui on screen
     //will also reduce controller state to a byte, displayed in title
 
+    public enum Direction : byte
+    {   //represents possible controller directions  
+        None, Up, UpRight, Right, DownRight, Down, DownLeft, Left, UpLeft
+    }
+
+    public struct GameInputStruct //this struct is 24 bytes (managed)
+    {
+        public bool A; //this is actually 4 bytes (managed)
+        public bool B;
+        public bool X;
+        public bool Y;
+        public bool Start;
+        public Direction Direction; //this is 1 byte in size, as expected
+
+        public GameInputStruct(
+            bool a, bool b, bool x, bool y,
+            bool start, Direction direction)
+        { A = a; B = b; X = x; Y = y; Start = start; Direction = direction; }
+    }
+
     public class Game1 : Game
     {
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
-        string con = "controller state : ";
-
-
         
-
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
@@ -42,18 +58,6 @@ namespace Game1
         {
             GraphicsDevice.Clear(new Color(40, 40, 40));
             Challenge1.Draw();
-
-            Window.Title = con + Challenge1.CompressedState +
-                " / buff index : " + Challenge1.InputRecordingCounter +
-                " / buff size : " + Challenge1.InputRecBufferSize;
-            if (Challenge1.Recording)
-            { Window.Title += " - recording"; }
-            else
-            { Window.Title += " - writing"; }
-
-            Window.Title += " GPS:" + Challenge1.size_GPS;
-            Window.Title += " GIS:" + Challenge1.size_GIS;
-
         }
     }
 }
