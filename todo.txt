@@ -1,5 +1,4 @@
 
-
 4 byte controller:
 
 9 directions + 28 velocities in joystick position
@@ -26,6 +25,10 @@ we should be able to decompress a 4 byte struct to a gamepad state directly, too
 
 we should be able to see the joystick position, relative to it's origin, in
 at least a 28px sized area, since we have that data.
+
+we could also divide directions more, and have 16 directions, with 15
+velocities, which add up to 240. plus none, so 241 total states.
+
 
 
 one byte controller:

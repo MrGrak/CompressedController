@@ -14,6 +14,9 @@ namespace Game1
         SpriteBatch spriteBatch;
         string con = "controller state : ";
 
+
+        
+
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
@@ -25,28 +28,32 @@ namespace Game1
         protected override void LoadContent()
         {
             spriteBatch = new SpriteBatch(GraphicsDevice);
-            Input.Constructor(graphics, spriteBatch);
+            Challenge1.Constructor(graphics, spriteBatch, this);
         }
         
         protected override void UnloadContent() { }
         
         protected override void Update(GameTime gameTime)
         {
-            Input.Update();
+            Challenge1.Update();
         }
         
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(new Color(40, 40, 40));
-            Input.Draw();
+            Challenge1.Draw();
 
-            Window.Title = con + Input.CompressedState +
-                " / buff index : " + Input.InputRecordingCounter +
-                " / buff size : " + Input.InputRecBufferSize;
-            if (Input.Recording)
+            Window.Title = con + Challenge1.CompressedState +
+                " / buff index : " + Challenge1.InputRecordingCounter +
+                " / buff size : " + Challenge1.InputRecBufferSize;
+            if (Challenge1.Recording)
             { Window.Title += " - recording"; }
             else
-            { Window.Title += " - playing back"; }
+            { Window.Title += " - writing"; }
+
+            Window.Title += " GPS:" + Challenge1.size_GPS;
+            Window.Title += " GIS:" + Challenge1.size_GIS;
+
         }
     }
 }
