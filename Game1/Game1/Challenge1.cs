@@ -9,18 +9,18 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO.Compression;
+
+
 
 namespace Game1
 {
     public static class Challenge1
     {
 
-
-        public static short InputRecBufferSize = 1000; //1k for challenge
-        public static GameInputStruct[] Rec_GISBuffer = new GameInputStruct[InputRecBufferSize];
-        public static byte[] Rec_ByteBuffer = new byte[InputRecBufferSize];
-
-
+        public static short BufferSize = 1000; //1k for challenge
+        public static GameInputStruct[] GISBuffer = new GameInputStruct[BufferSize];
+        public static byte[] ByteBuffer = new byte[BufferSize];
 
         public static void Constructor(GraphicsDeviceManager gdm, SpriteBatch sb, Game g)
         {
@@ -28,8 +28,8 @@ namespace Game1
             ReadGamePadStructFile();
 
             //iterate and map/compress buffer into byte array
-            for(int i = 0; i < InputRecBufferSize; i++)
-            { Rec_ByteBuffer[i] = ConvertToByte(Rec_GISBuffer[i]); }
+            for(int i = 0; i < BufferSize; i++)
+            { ByteBuffer[i] = ConvertToByte(GISBuffer[i]); }
 
             //write byte buffer to file, for comparison
             WriteByteArray();
@@ -43,9 +43,6 @@ namespace Game1
         public static void Draw() { }
 
 
-
-
-
         //methods for loading challenge data
 
         public static void ReadGamePadStructFile()
@@ -57,7 +54,7 @@ namespace Game1
             {
                 using (BinaryReader reader = new BinaryReader(stream))
                 {
-                    for (int i = 0; i < InputRecBufferSize; i++)
+                    for (int i = 0; i < BufferSize; i++)
                     {
                         GameInputStruct G = new GameInputStruct();
                         G.Direction = (Direction)reader.ReadByte();
@@ -66,7 +63,7 @@ namespace Game1
                         G.B = reader.ReadBoolean();
                         G.X = reader.ReadBoolean();
                         G.Y = reader.ReadBoolean();
-                        Rec_GISBuffer[i] = G;
+                        GISBuffer[i] = G;
                     }
                     reader.Close();
                     stream.Close();
@@ -79,8 +76,6 @@ namespace Game1
             var location = new Uri(Assembly.GetEntryAssembly().GetName().CodeBase);
             return new FileInfo(location.AbsolutePath).Directory.FullName;
         }
-
-
 
 
         //encoding/conversion methods
@@ -143,21 +138,35 @@ namespace Game1
             {
                 using (BinaryWriter writer = new BinaryWriter(stream))
                 {   //write all bytes from buffer into stream
-                    for (int i = 0; i < InputRecBufferSize; i++)
-                    { writer.Write((byte)Rec_ByteBuffer[i]); }
+                    for (int i = 0; i < BufferSize; i++)
+                    { writer.Write((byte)ByteBuffer[i]); }
                     var data = stream.ToArray();
 
-                    //data could be compressed here...
-
-                    //write byte array to game dir
-                    using (var s = File.Open(dir, FileMode.Create, FileAccess.Write))
-                    { s.Write(data, 0, data.Length); }
+                    {   //write byte array to game dir
+                        using (var s = File.Open(dir, FileMode.Create, FileAccess.Write))
+                        { s.Write(data, 0, data.Length); }
+                    }
+                    /*
+                    {   //write compressed version of byte data (these both suck, makes larger file)
+                        dir = Path.Combine(GetExecutingDirectoryName(), "GamePadByteDeflate.bin");
+                        using (DeflateStream dstream = new DeflateStream(stream, CompressionLevel.Optimal))
+                        { dstream.Write(data, 0, data.Length); }
+                        var comp = stream.ToArray();
+                        using (var s = File.Open(dir, FileMode.Create, FileAccess.Write))
+                        { s.Write(comp, 0, comp.Length); }
+                    }
+                    {   //write a Gzip version
+                        dir = Path.Combine(GetExecutingDirectoryName(), "GamePadByteGZip.bin");
+                        using (GZipStream dstream = new GZipStream(stream, CompressionLevel.Optimal))
+                        { dstream.Write(data, 0, data.Length); }
+                        var comp = stream.ToArray();
+                        using (var s = File.Open(dir, FileMode.Create, FileAccess.Write))
+                        { s.Write(comp, 0, comp.Length); }
+                    }
+                    */
                 }
             }
         }
-
-
-
 
 
     }
